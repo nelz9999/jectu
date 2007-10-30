@@ -1,0 +1,13 @@
+#summary The plan of action for developing JECTU
+#labels Phase-Requirements
+
+= Details =
+
+Planned improvements:
+  # ~~Remove any dependency on TestNG or JUnit, just throw AssertionError~~ - Done in 0.1.0
+  # Superclasses - Use reflection to move up the class heirarchy
+  # Primitive arrays
+  # Objects (Programmable?)
+  # Reporting 
+  # Site documentation
+  # Optional failure for bad hashCode implementation
