@@ -5,7 +5,7 @@
 	<groupId>net.nelz.jectu</groupId>
 	<artifactId>jectu</artifactId>
 	<packaging>jar</packaging>
-	<version>0.1.0-SNAPSHOT</version>
+	<version>0.1.1-SNAPSHOT</version>
 	<name>jectu</name>
 	<description>JECTU - The Java Equals Contract Test Utility</description>
 	<url>http://www.nelz.net/jectu</url>
