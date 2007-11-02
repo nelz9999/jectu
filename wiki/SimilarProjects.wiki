@@ -1,0 +1,4 @@
+#summary Projects with similar aims as JECTU
+
+= Projects with similar aims as JECTU =
+  * [http://junit-addons.sourceforge.net/ JUnit-Addons] - A Pre-JUnit4 base class, called `EqualsHashCodeTestCase`
