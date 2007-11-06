@@ -41,43 +41,6 @@ public class JectuHelperTest {
 		StringBuffer yy = (StringBuffer) jectu.getExampleY();
 		StringBuffer zz = (StringBuffer) jectu.getExampleZ();
 	}
-	
-//	@Test
-//	public void shouldThrowLHSException() {
-//		jectu.setExampleX(new ProgrammableEqualsPOJO(false));
-//		jectu.setExampleY(new ProgrammableEqualsPOJO(true));
-//		final String message = RandomStringUtils.randomAlphanumeric(14);
-//		
-//		try {
-//			jectu.testEquality(message);
-//			fail("Expected Exception.");
-//		} catch (AssertionError er) {
-//			assertTrue(er.getMessage().indexOf(message) != -1);
-//			assertTrue(er.getMessage().indexOf(Jectu.EQUALS_ID) != -1);
-//		} 
-//	}
-//	
-//	@Test
-//	public void shouldThrowHashCodeException() {
-//		jectu.setExampleX(new ProgrammableHashCodePOJO(17));
-//		jectu.setExampleY(new ProgrammableHashCodePOJO(23));
-//		
-//		final String message = RandomStringUtils.randomAlphanumeric(14);
-//		
-//		try {
-//			jectu.testEquality(message);
-//			fail("Expected Exception.");
-//		} catch (AssertionError er) {
-//			assertTrue(er.getMessage().indexOf(message) != -1);
-//			assertTrue(er.getMessage().indexOf(Jectu.HASHCODE_ID) != -1);
-//		}
-//	}
-	
-//	@Test
-//	public void shouldGatherMethods() {
-//		List<Method> methods = jectu.getEffectiveMethods(PrimitivePOJO.class);
-//		assertEquals(8, methods.size());		
-//	}
 
 	@Test
 	public void shouldFailReflexivity() {
@@ -204,9 +167,9 @@ public class JectuHelperTest {
 		jectu.setClassUnderTest(PrimitivePlusObjectPOJO.class);
 		jectu.processFields();
 		
-		List<Field> effective = jectu.getEffectiveFields();
-		List<Field> ineffective = jectu.getIneffectiveFields();
-		List<Field> ignored = jectu.getIgnoredFields();
+		Set<Field> effective = jectu.getEffectiveFields();
+		Set<Field> ineffective = jectu.getIneffectiveFields();
+		Set<Field> ignored = jectu.getIgnoredFields();
 		
 		assertEquals(8, effective.size());
 		assertEquals(0, ineffective.size());
@@ -219,15 +182,16 @@ public class JectuHelperTest {
 		jectu.addIneffectiveFieldName("testDouble");
 		jectu.processFields();
 		
-		List<Field> effective = jectu.getEffectiveFields();
-		List<Field> ineffective = jectu.getIneffectiveFields();
-		List<Field> ignored = jectu.getIgnoredFields();
+		Set<Field> effective = jectu.getEffectiveFields();
+		Set<Field> ineffective = jectu.getIneffectiveFields();
+		Set<Field> ignored = jectu.getIgnoredFields();
 		
 		assertEquals(7, effective.size());
 		assertEquals(1, ineffective.size());
 		assertEquals(1, ignored.size());
 		
-		assertEquals("testDouble", ineffective.get(0).getName());
+		final Field field = ineffective.iterator().next();
+		assertEquals("testDouble", field.getName());
 	}
 	
 	@Test
@@ -236,9 +200,9 @@ public class JectuHelperTest {
 		jectu.addIgnoredFieldName("testDouble");
 		jectu.processFields();
 		
-		List<Field> effective = jectu.getEffectiveFields();
-		List<Field> ineffective = jectu.getIneffectiveFields();
-		List<Field> ignored = jectu.getIgnoredFields();
+		Set<Field> effective = jectu.getEffectiveFields();
+		Set<Field> ineffective = jectu.getIneffectiveFields();
+		Set<Field> ignored = jectu.getIgnoredFields();
 		
 		assertEquals(7, effective.size());
 		assertEquals(0, ineffective.size());
@@ -246,35 +210,132 @@ public class JectuHelperTest {
 	}
 
 	@Test
-	public void shouldProcessFieldsWithIneffectiveObject() {
+	public void shouldProcessFieldsWithIgnoredObjectTrump() {
 		jectu.setClassUnderTest(PrimitivePlusObjectPOJO.class);
+		
+		// This Object should get ignored, not ineffective'd
 		jectu.addIneffectiveFieldName("testObject");
+		
+		// This primitive field should get ineffective'd
+		jectu.addIneffectiveFieldName("testByte");
 		jectu.processFields();
 		
-		List<Field> effective = jectu.getEffectiveFields();
-		List<Field> ineffective = jectu.getIneffectiveFields();
-		List<Field> ignored = jectu.getIgnoredFields();
+		Set<Field> effective = jectu.getEffectiveFields();
+		Set<Field> ineffective = jectu.getIneffectiveFields();
+		Set<Field> ignored = jectu.getIgnoredFields();
 		
-		assertEquals(8, effective.size());
+		assertEquals(7, effective.size());
 		assertEquals(1, ineffective.size());
-		assertEquals(0, ignored.size());		
+		assertEquals(1, ignored.size());		
 	}
+	
+	@Test
+	public void shouldMakeEffectivenessProgrammable() {
+		assertTrue("Should be effective by default",jectu.isEffectiveByDefault());
+		
+		jectu.setEffectiveByDefault(false);
+		assertFalse(jectu.isEffectiveByDefault());
+		
+		try {
+			jectu.setEffectiveByDefault(false);
+			fail("Expected Exception");
+		} catch (IllegalStateException ex) {
+			assertTrue(true);
+		}
+	}
+	
+	@Test
+	public void shouldCheckListsForEffective() {
+		final String n1 = RandomStringUtils.randomAlphabetic(10);
+		final String n2 = RandomStringUtils.randomAlphabetic(11);
+		final String n3 = RandomStringUtils.randomAlphabetic(12);
+		
+		jectu.addIneffectiveFieldName(n1);
+		try {
+			jectu.addEffectiveFieldName(n1);
+			fail("Expected Exception");
+		} catch (IllegalStateException ex) {
+			assertTrue(ex.getMessage().indexOf(n1) != -1);
+		}
 
-//	@Test
-//	public void testArrays() {
-//		boolean [] [] values = {{true, true}, {false, false}};
-//		Object ref = values;
-//		
-//		if (ref instanceof boolean[][]) {
-//			System.out.println("Ref is boolean[][]");
-//			Object sub = ((boolean[][])ref)[0];
-//			if (sub instanceof boolean[]) {
-//				System.out.println("Sub is boolean[]");				
-//			} else {
-//				System.out.println("Sub failed");
-//			}
-//		} else {
-//			System.out.println("Ref failed");
-//		}		
-//	}
+		jectu.addIgnoredFieldName(n2);
+		try {
+			jectu.addEffectiveFieldName(n2);
+			fail("Expected Exception");
+		} catch (IllegalStateException ex) {
+			assertTrue(ex.getMessage().indexOf(n2) != -1);
+		}
+
+		jectu.addEffectiveFieldName(n3);
+		try {
+			jectu.addEffectiveFieldName(n3);
+			fail("Expected Exception");
+		} catch (IllegalStateException ex) {
+			assertTrue(ex.getMessage().indexOf(n3) != -1);
+		}
+
+	}
+	
+	@Test
+	public void shouldCheckListsForIneffective() {
+		final String n1 = RandomStringUtils.randomAlphabetic(10);
+		final String n2 = RandomStringUtils.randomAlphabetic(11);
+		final String n3 = RandomStringUtils.randomAlphabetic(12);
+
+		jectu.addEffectiveFieldName(n1);
+		try {
+			jectu.addIneffectiveFieldName(n1);
+			fail("Expected Exception");
+		} catch (IllegalStateException ex) {
+			assertTrue(ex.getMessage().indexOf(n1) != -1);
+		}
+
+		jectu.addIgnoredFieldName(n2);
+		try {
+			jectu.addIneffectiveFieldName(n2);
+			fail("Expected Exception");
+		} catch (IllegalStateException ex) {
+			assertTrue(ex.getMessage().indexOf(n2) != -1);
+		}
+
+		jectu.addIneffectiveFieldName(n3);
+		try {
+			jectu.addIneffectiveFieldName(n3);
+			fail("Expected Exception");
+		} catch (IllegalStateException ex) {
+			assertTrue(ex.getMessage().indexOf(n3) != -1);
+		}
+
+	}
+	
+	@Test
+	public void shouldCheckListsForIgnore() {
+		final String n1 = RandomStringUtils.randomAlphabetic(10);
+		final String n2 = RandomStringUtils.randomAlphabetic(11);
+		final String n3 = RandomStringUtils.randomAlphabetic(12);
+		
+		jectu.addEffectiveFieldName(n1);
+		try {
+			jectu.addIgnoredFieldName(n1);
+			fail("Expected Exception");
+		} catch (IllegalStateException ex) {
+			assertTrue(ex.getMessage().indexOf(n1) != -1);
+		}
+
+		jectu.addIneffectiveFieldName(n2);
+		try {
+			jectu.addIgnoredFieldName(n2);
+			fail("Expected Exception");
+		} catch (IllegalStateException ex) {
+			assertTrue(ex.getMessage().indexOf(n2) != -1);
+		}
+
+		jectu.addIgnoredFieldName(n3);
+		try {
+			jectu.addIgnoredFieldName(n3);
+			fail("Expected Exception");
+		} catch (IllegalStateException ex) {
+			assertTrue(ex.getMessage().indexOf(n3) != -1);
+		}
+	}
 }

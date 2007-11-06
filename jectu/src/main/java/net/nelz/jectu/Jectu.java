@@ -76,13 +76,17 @@ public final class Jectu {
 	private Object exampleY;
 	private Object exampleZ;
 	
+	private boolean effectiveByDefault = true;
+	private boolean defaultEffectivenessSet = false;
+	
 	private StackTraceElement[] stackTrace;
 	
-	private List<Field> effectiveFields = new ArrayList<Field>();
-	private List<Field> ineffectiveFields = new ArrayList<Field>();
-	private List<String> ineffectiveFieldNames = new ArrayList<String>();
-	private List<Field> ignoredFields = new ArrayList<Field>();
-	private List<String> ignoredFieldNames = new ArrayList<String>(); 
+	private Set<Field> effectiveFields = new HashSet<Field>();
+	private Set<String> effectiveFieldNames = new HashSet<String>();
+	private Set<Field> ineffectiveFields = new HashSet<Field>();
+	private Set<String> ineffectiveFieldNames = new HashSet<String>();
+	private Set<Field> ignoredFields = new HashSet<Field>();
+	private Set<String> ignoredFieldNames = new HashSet<String>(); 
 	
 	static final String FAILURE_CHARACTERISTIC = "; Failure Characteristic: ";
 	static final String REFLEXIVITY = FAILURE_CHARACTERISTIC + "Refelxivity";
@@ -141,12 +145,38 @@ public final class Jectu {
 	
 	/**
 	 * Add the name of a field that should not be ignored, but should be tested to 
+	 * ensure it does have an effect upon the <code>equals(...)</code> and 
+	 * <code>hashcode()</code> methods.
+	 * @param fieldName
+	 * @return this instance of Jectu.  (This will allow method chaining.)
+	 */
+	public Jectu addEffectiveFieldName(final String fieldName) {
+		if (effectiveFieldNames.contains(fieldName) ||
+				ineffectiveFieldNames.contains(fieldName) ||
+				ignoredFieldNames.contains(fieldName)) {
+			throw new IllegalStateException("Field '" + fieldName + 
+					"' has already been described, and may not be more than one of the " +
+					"following: Effective, Ineffective, or Ignored.");
+		}
+		effectiveFieldNames.add(fieldName);
+		return this;
+	}
+	
+	/**
+	 * Add the name of a field that should not be ignored, but should be tested to 
 	 * ensure it does not have an effect upon the <code>equals(...)</code> and 
 	 * <code>hashcode()</code> methods.
 	 * @param fieldName
 	 * @return this instance of Jectu.  (This will allow method chaining.)
 	 */
 	public Jectu addIneffectiveFieldName(final String fieldName) {
+		if (effectiveFieldNames.contains(fieldName) ||
+				ineffectiveFieldNames.contains(fieldName) ||
+				ignoredFieldNames.contains(fieldName)) {
+			throw new IllegalStateException("Field '" + fieldName + 
+					"' has already been described, and may not be more than one of the " +
+					"following: Effective, Ineffective, or Ignored.");
+		}
 		ineffectiveFieldNames.add(fieldName);
 		return this;
 	}
@@ -159,10 +189,30 @@ public final class Jectu {
 	 * @return this instance of Jectu.  (This will allow method chaining.)
 	 */
 	public Jectu addIgnoredFieldName(final String fieldName) {
+		if (effectiveFieldNames.contains(fieldName) ||
+				ineffectiveFieldNames.contains(fieldName) ||
+				ignoredFieldNames.contains(fieldName)) {
+			throw new IllegalStateException("Field '" + fieldName + 
+					"' has already been described, and may not be more than one of the " +
+					"following: Effective, Ineffective, or Ignored.");
+		}
 		ignoredFieldNames.add(fieldName);
 		return this;
 	}
 	
+	boolean isEffectiveByDefault() {
+		return effectiveByDefault;
+	}
+
+	public Jectu setEffectiveByDefault(boolean effectiveByDefault) {
+		if (this.defaultEffectivenessSet) {
+			throw new IllegalStateException("EffectiveByDefault already set.");
+		}
+		this.effectiveByDefault = effectiveByDefault;
+		this.defaultEffectivenessSet = true;
+		return this;
+	}
+
 	@SuppressWarnings("unchecked")
 	void createObjectsFromClass(final Class clazz) {
 		try {
@@ -179,25 +229,27 @@ public final class Jectu {
 		final Field[] tempArray = classUnderTest.getDeclaredFields();
 		AccessibleObject.setAccessible(tempArray, true);
 		final List<Field> fields = Arrays.asList(tempArray);
-// Example borrowed from org.apache.commons.lang.builder.EqualsBuilder.java
-//        if (!excludedFieldList.contains(f.getName())
-//                && (f.getName().indexOf('$') == -1)
-//                && (useTransients || !Modifier.isTransient(f.getModifiers()))
-//                && (!Modifier.isStatic(f.getModifiers()))) {
-		for (final Field field : fields) {	
-	        if ((field.getName().indexOf('$') == -1)
-	                && (!Modifier.isStatic(field.getModifiers()))
-	                && field.getType().isPrimitive()
-	                && !ineffectiveFieldNames.contains(field.getName())
-	                && !ignoredFieldNames.contains(field.getName())) {
-	        	effectiveFields.add(field);
+		// Example borrowed from org.apache.commons.lang.builder.EqualsBuilder.java
+		//        if (!excludedFieldList.contains(f.getName())
+		//                && (f.getName().indexOf('$') == -1)
+		//                && (useTransients || !Modifier.isTransient(f.getModifiers()))
+		//                && (!Modifier.isStatic(f.getModifiers()))) {
+		for (final Field field : fields) {
+	        if ((field.getName().indexOf('$') != -1)
+	                || (Modifier.isStatic(field.getModifiers()))
+	                || !field.getType().isPrimitive()
+	                || ignoredFieldNames.contains(field.getName())) {
+				ignoredFields.add(field);
+	        } else if (effectiveFieldNames.contains(field.getName())) {
+	        	effectiveFields.add(field);	        	
 	        } else if (ineffectiveFieldNames.contains(field.getName())){
 	        	ineffectiveFields.add(field);
-			} else {
-				ignoredFields.add(field);
-			}
+	        } else if (effectiveByDefault) {
+	        	effectiveFields.add(field);	        		        	
+	        } else {
+	        	ineffectiveFields.add(field);
+	        }
 		}
-
 	}
 	
 	void testEffectiveField(final Field field) {
@@ -467,27 +519,27 @@ public final class Jectu {
 		this.classUnderTest = classUnderTest;
 	}
 
-	List<Field> getEffectiveFields() {
+	Set<Field> getEffectiveFields() {
 		return effectiveFields;
 	}
 
-	void setEffectiveFields(List<Field> effectiveFields) {
+	void setEffectiveFields(Set<Field> effectiveFields) {
 		this.effectiveFields = effectiveFields;
 	}
 
-	List<Field> getIneffectiveFields() {
+	Set<Field> getIneffectiveFields() {
 		return ineffectiveFields;
 	}
 
-	void setIneffectiveFields(List<Field> ineffectiveFields) {
+	void setIneffectiveFields(Set<Field> ineffectiveFields) {
 		this.ineffectiveFields = ineffectiveFields;
 	}
 
-	List<Field> getIgnoredFields() {
+	Set<Field> getIgnoredFields() {
 		return ignoredFields;
 	}
 
-	void setIgnoredFields(List<Field> ignoredFields) {
+	void setIgnoredFields(Set<Field> ignoredFields) {
 		this.ignoredFields = ignoredFields;
 	}
 
