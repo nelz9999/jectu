@@ -11,3 +11,4 @@ Planned improvements:
   # Reporting 
   # Site documentation
   # Optional failure for bad hashCode implementation
+  # Transient fields
