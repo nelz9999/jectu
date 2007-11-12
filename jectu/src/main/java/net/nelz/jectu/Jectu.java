@@ -79,14 +79,21 @@ public final class Jectu {
 	private boolean effectiveByDefault = true;
 	private boolean defaultEffectivenessSet = false;
 	
+	private boolean allowIgnoredFields = true;
+	private boolean allowIgnoredFieldsSet = false;
+	
 	private StackTraceElement[] stackTrace;
 	
-	private Set<Field> effectiveFields = new HashSet<Field>();
-	private Set<String> effectiveFieldNames = new HashSet<String>();
-	private Set<Field> ineffectiveFields = new HashSet<Field>();
-	private Set<String> ineffectiveFieldNames = new HashSet<String>();
-	private Set<Field> ignoredFields = new HashSet<Field>();
-	private Set<String> ignoredFieldNames = new HashSet<String>(); 
+	private Map<String, EffectiveFieldPopulator> effectiveFieldNames = 
+		new HashMap<String, EffectiveFieldPopulator>();
+	private Map<String, IneffectiveFieldPopulator> ineffectiveFieldNames = 
+		new HashMap<String, IneffectiveFieldPopulator>();
+//	private Set<Field> ignoredFields = new HashSet<Field>();
+	private Map<String, Field> ignoredFieldNames = new HashMap<String, Field>();
+	
+	// TODO: New process, check all the effective/ineffective fields at the
+	// time of "programming" of the utility.  (isAssignable, isTransient, etc...?)
+	private Map<String, Field> allFields = new HashMap<String, Field>();
 	
 	static final String FAILURE_CHARACTERISTIC = "; Failure Characteristic: ";
 	static final String REFLEXIVITY = FAILURE_CHARACTERISTIC + "Refelxivity";
@@ -104,6 +111,10 @@ public final class Jectu {
 	@SuppressWarnings("unchecked")
 	public Jectu(final Class clazz) {
 		classUnderTest = clazz;
+		preProcess();
+	}
+	
+	Jectu() {
 	}
 	
 	/**
@@ -138,65 +149,133 @@ public final class Jectu {
 		
 		this.processFields();
 		
-		for (Field field : effectiveFields) {
-			this.testEffectiveField(field);
-		}
+//		for (Field field : effectiveFields) {
+//			this.testEffectiveField(field);
+//		}
+		
+		postProcess();
 	}
 	
 	/**
-	 * Add the name of a field that should not be ignored, but should be tested to 
-	 * ensure it does have an effect upon the <code>equals(...)</code> and 
-	 * <code>hashcode()</code> methods.
+	 * Add a field to the list of fields that affect equality in the class under test.
 	 * @param fieldName
-	 * @return this instance of Jectu.  (This will allow method chaining.)
+	 * @param baseObject  An instance of an object that can be assigned to this field
+	 * @param unequalObject An instance of an object that can be assigned to this field, and 
+	 * 						will cause the equals method of the class under test to be
+	 * 						unequal with an instance assigned the 'baseObject'.
+	 * @param equalObject An instance of an object that can be assigned to this field, and 
+	 * 						will cause the equals method of the class under test to be
+	 * 						equal with an instance assigned the 'baseObject'.
+	 * @return
 	 */
-	public Jectu addEffectiveFieldName(final String fieldName) {
-		if (effectiveFieldNames.contains(fieldName) ||
-				ineffectiveFieldNames.contains(fieldName) ||
-				ignoredFieldNames.contains(fieldName)) {
-			throw new IllegalStateException("Field '" + fieldName + 
-					"' has already been described, and may not be more than one of the " +
-					"following: Effective, Ineffective, or Ignored.");
+	public Jectu addEffectiveField(final String fieldName, 
+			final Object baseObject,
+			final Object unequalObject,
+			final Object equalObject) {
+		/*
+		 * We don't need to check for duplicate submissions, as it doesn't create multiple
+		 * entries.
+		 */
+		if (!allFields.containsKey(fieldName)) {
+			throw new IllegalStateException("Cannot find a field named: " + fieldName);
 		}
-		effectiveFieldNames.add(fieldName);
+		
+		if (ineffectiveFieldNames.containsKey(fieldName)) {
+			throw new IllegalStateException("There is already an ineffective entry for field: "
+					+ fieldName);
+		}
+
+		if (ignoredFieldNames.containsKey(fieldName)) {
+			throw new IllegalStateException("There is already an ignored entry for field: "
+					+ fieldName);
+		}
+
+		final EffectiveFieldPopulator populator = new EffectiveFieldPopulator(
+				allFields.get(fieldName),
+				baseObject,
+				unequalObject,
+				equalObject);
+		effectiveFieldNames.put(fieldName, populator);
+		
 		return this;
 	}
 	
 	/**
-	 * Add the name of a field that should not be ignored, but should be tested to 
-	 * ensure it does not have an effect upon the <code>equals(...)</code> and 
-	 * <code>hashcode()</code> methods.
+	 * Add a primitive field to the list of fields that affect equality in the class under test.
 	 * @param fieldName
-	 * @return this instance of Jectu.  (This will allow method chaining.)
+	 * @return
 	 */
-	public Jectu addIneffectiveFieldName(final String fieldName) {
-		if (effectiveFieldNames.contains(fieldName) ||
-				ineffectiveFieldNames.contains(fieldName) ||
-				ignoredFieldNames.contains(fieldName)) {
-			throw new IllegalStateException("Field '" + fieldName + 
-					"' has already been described, and may not be more than one of the " +
-					"following: Effective, Ineffective, or Ignored.");
+	public Jectu addEffectiveField(final String fieldName) {
+		return this.addEffectiveField(fieldName, null, null, null);
+	}
+
+	/**
+	 * Add a field to the list of fields that do not affect equality in the class under test.
+	 * @param fieldName
+	 * @param baseObject
+	 * @param unequalObject
+	 * @return
+	 */
+	public Jectu addIneffectiveField(final String fieldName, 
+			final Object baseObject,
+			final Object unequalObject) {
+		/*
+		 * We don't need to check for duplicate submissions, as it doesn't create multiple
+		 * entries.
+		 */
+		if (!allFields.containsKey(fieldName)) {
+			throw new IllegalStateException("Cannot find a field named: " + fieldName);
 		}
-		ineffectiveFieldNames.add(fieldName);
+				
+		if (effectiveFieldNames.containsKey(fieldName)) {
+			throw new IllegalStateException("There is already an effective entry for field: "
+					+ fieldName);
+		}
+
+		if (ignoredFieldNames.containsKey(fieldName)) {
+			throw new IllegalStateException("There is already an ignored entry for field: "
+					+ fieldName);
+		}
+
+		final IneffectiveFieldPopulator populator = new IneffectiveFieldPopulator(
+				allFields.get(fieldName),
+				baseObject,
+				unequalObject);
+		ineffectiveFieldNames.put(fieldName, populator);
+		
 		return this;
 	}
-	
+
 	/**
-	 * Add the name of a field that should be ignored during this test.  
-	 * (The default ignored fields are those that don't fit the currently 
-	 * testable types.)
+	 * Add a primitive field to the list of fields that do not affect equality 
+	 * in the class under test.
 	 * @param fieldName
-	 * @return this instance of Jectu.  (This will allow method chaining.)
+	 * @return
 	 */
-	public Jectu addIgnoredFieldName(final String fieldName) {
-		if (effectiveFieldNames.contains(fieldName) ||
-				ineffectiveFieldNames.contains(fieldName) ||
-				ignoredFieldNames.contains(fieldName)) {
-			throw new IllegalStateException("Field '" + fieldName + 
-					"' has already been described, and may not be more than one of the " +
-					"following: Effective, Ineffective, or Ignored.");
+	public Jectu addIneffectiveField(final String fieldName) {
+		return this.addIneffectiveField(fieldName, null, null);
+	}
+	
+	public Jectu addIgnoredField(final String fieldName) {
+		/*
+		 * We don't need to check for duplicate submissions, as it doesn't create multiple
+		 * entries.
+		 */
+		if (!allFields.containsKey(fieldName)) {
+			throw new IllegalStateException("Cannot find a field named: " + fieldName);
 		}
-		ignoredFieldNames.add(fieldName);
+				
+		if (effectiveFieldNames.containsKey(fieldName)) {
+			throw new IllegalStateException("There is already an effective entry for field: "
+					+ fieldName);
+		}
+		
+		if (ineffectiveFieldNames.containsKey(fieldName)) {
+			throw new IllegalStateException("There is already an ineffective entry for field: "
+					+ fieldName);
+		}
+
+		ignoredFieldNames.put(fieldName, allFields.get(fieldName));		
 		return this;
 	}
 	
@@ -210,6 +289,29 @@ public final class Jectu {
 		}
 		this.effectiveByDefault = effectiveByDefault;
 		this.defaultEffectivenessSet = true;
+		return this;
+	}
+	
+	boolean isAllowIgnoredFields() {
+		return allowIgnoredFields;
+	}
+
+	public Jectu setAllowIgnoredFields(final boolean allowIgnoredFields) {
+		/*
+		 * TODO: This is a candidate for refactoring.  Instead of "allow" or 
+		 * "disallow" ignored fields, use more of a "freeze" policy.
+		 */
+		if (this.allowIgnoredFieldsSet) {
+			throw new IllegalStateException("AllowIgnoredFields has already been set.");
+		}
+		
+		if (!allowIgnoredFields && (this.ignoredFieldNames.size() > 0)) {
+			throw new IllegalStateException("There have already been ignored fields added.");
+		}
+		
+		this.allowIgnoredFields = allowIgnoredFields;
+		this.allowIgnoredFieldsSet = true;
+		
 		return this;
 	}
 
@@ -226,29 +328,36 @@ public final class Jectu {
 	}
 	
 	void processFields() {
-		final Field[] tempArray = classUnderTest.getDeclaredFields();
-		AccessibleObject.setAccessible(tempArray, true);
-		final List<Field> fields = Arrays.asList(tempArray);
 		// Example borrowed from org.apache.commons.lang.builder.EqualsBuilder.java
 		//        if (!excludedFieldList.contains(f.getName())
 		//                && (f.getName().indexOf('$') == -1)
 		//                && (useTransients || !Modifier.isTransient(f.getModifiers()))
 		//                && (!Modifier.isStatic(f.getModifiers()))) {
-		for (final Field field : fields) {
-	        if ((field.getName().indexOf('$') != -1)
-	                || (Modifier.isStatic(field.getModifiers()))
-	                || !field.getType().isPrimitive()
-	                || ignoredFieldNames.contains(field.getName())) {
-				ignoredFields.add(field);
-	        } else if (effectiveFieldNames.contains(field.getName())) {
-	        	effectiveFields.add(field);	        	
-	        } else if (ineffectiveFieldNames.contains(field.getName())){
-	        	ineffectiveFields.add(field);
-	        } else if (effectiveByDefault) {
-	        	effectiveFields.add(field);	        		        	
-	        } else {
-	        	ineffectiveFields.add(field);
-	        }
+		for (final String fieldName : allFields.keySet()) {
+			// We don't need to assign fields that are already bucketed.
+			if (!effectiveFieldNames.containsKey(fieldName)
+					&& !ineffectiveFieldNames.containsKey(fieldName)
+					&& !ignoredFieldNames.containsKey(fieldName)) {
+				final Field field = allFields.get(fieldName);
+				
+				// This is where we discriminate about what types of 
+				// fields we can handle.
+		        if ((fieldName.indexOf('$') != -1)
+		        		|| Modifier.isStatic(field.getModifiers())
+		        		|| Modifier.isTransient(field.getModifiers())
+		        		|| field.getType().isArray()
+		        		|| !field.getType().isPrimitive()) {
+		        	ignoredFieldNames.put(fieldName, field);
+		        } else if (effectiveByDefault) {
+		        	// If we've defaulted to effective, set an un-assigned field to effective.
+		        	final EffectiveFieldPopulator pop = new EffectiveFieldPopulator(field);
+		        	effectiveFieldNames.put(fieldName, pop);
+		        } else {
+		        	// otherwise, set it to ineffective.
+		        	final IneffectiveFieldPopulator pop = new IneffectiveFieldPopulator(field);
+		        	ineffectiveFieldNames.put(fieldName, pop);
+		        }
+			}
 		}
 	}
 	
@@ -381,6 +490,32 @@ public final class Jectu {
 		}
 	}
 
+	/**
+	 * Take the "class" object, and populate a map associating the fieldName with the 
+	 * <code>Field</code> itself.
+	 */
+	void preProcess() {
+		final Field[] tempArray = classUnderTest.getDeclaredFields();
+		AccessibleObject.setAccessible(tempArray, true);
+		final List<Field> fields = Arrays.asList(tempArray);
+
+		for (Field field : fields) {
+			allFields.put(field.getName(), field);
+		}
+	}
+	
+	/**
+	 * Do all the clean-up type of check after equality has been tested.
+	 */
+	void postProcess() {
+//		if (!this.allowIgnoredFields && ignoredFields.size() > 0) {
+//			StringBuffer buffer = new StringBuffer("The following fields were ignored:\n");
+//			for (Field field : ignoredFields) {
+//				buffer.append(field.getName() + "\n");
+//			}
+//			AssertJectu.assertTrue(stackTrace, buffer.toString(), false);
+//		}
+	}
 	
 	void testEquality(final String message) {
 		this.testNullSensitive(message);
@@ -519,29 +654,40 @@ public final class Jectu {
 		this.classUnderTest = classUnderTest;
 	}
 
-	Set<Field> getEffectiveFields() {
-		return effectiveFields;
+	Map<String, Field> getAllFields() {
+		return allFields;
 	}
 
-	void setEffectiveFields(Set<Field> effectiveFields) {
-		this.effectiveFields = effectiveFields;
+	void setAllFields(Map<String, Field> allFields) {
+		this.allFields = allFields;
 	}
 
-	Set<Field> getIneffectiveFields() {
-		return ineffectiveFields;
+	Map<String, EffectiveFieldPopulator> getEffectiveFieldNames() {
+		return effectiveFieldNames;
 	}
 
-	void setIneffectiveFields(Set<Field> ineffectiveFields) {
-		this.ineffectiveFields = ineffectiveFields;
+	void setEffectiveFieldNames(
+			Map<String, EffectiveFieldPopulator> effectiveFieldNames) {
+		this.effectiveFieldNames = effectiveFieldNames;
+	}	
+
+	Map<String, IneffectiveFieldPopulator> getIneffectiveFieldNames() {
+		return ineffectiveFieldNames;
 	}
 
-	Set<Field> getIgnoredFields() {
-		return ignoredFields;
+	void setIneffectiveFieldNames(
+			Map<String, IneffectiveFieldPopulator> ineffectiveFieldNames) {
+		this.ineffectiveFieldNames = ineffectiveFieldNames;
 	}
 
-	void setIgnoredFields(Set<Field> ignoredFields) {
-		this.ignoredFields = ignoredFields;
+	Map<String, Field> getIgnoredFieldNames() {
+		return ignoredFieldNames;
 	}
+
+	void setIgnoredFieldNames(Map<String, Field> ignoredFieldNames) {
+		this.ignoredFieldNames = ignoredFieldNames;
+	}
+
 
 	static final class AssertJectu {
 		
@@ -664,5 +810,131 @@ public final class Jectu {
 			return result;
 		}
 	}
+	
+	class IneffectiveFieldPopulator {
+		Field field; 
+		Object baseObject;
+		Object unequalObject;
+		boolean referenceType = false;
+		
+		IneffectiveFieldPopulator(final Field field, 
+				final Object baseObject,
+				final Object unequalObject) {
+			this.field = field;
+			this.baseObject = baseObject;
+			this.unequalObject = unequalObject;
+			this.validatePopulationObjects();
+		}
+		
+		IneffectiveFieldPopulator(final Field field) {
+			this.field = field;
+			this.validatePopulationObjects();
+		}
+		
+		IneffectiveFieldPopulator() {
+		}
 
+
+		Field getField() {
+			return field;
+		}
+		
+		void setField(Field field) {
+			this.field = field;
+		}
+		
+		Object getBaseObject() {
+			return baseObject;
+		}
+		
+		void setBaseObject(Object baseObject) {
+			this.baseObject = baseObject;
+		}
+		
+		Object getUnequalObject() {
+			return unequalObject;
+		}
+		
+		void setUnequalObject(Object unequalObject) {
+			this.unequalObject = unequalObject;
+		}
+		
+		boolean isReferenceType() {
+			return referenceType;
+		}
+		
+		@SuppressWarnings("unchecked")
+		void validatePopulationObjects() {
+			if (field == null) {
+				throw new IllegalStateException("The Field must be defined.");
+			}
+			
+			Class subject = field.getType();
+			referenceType = !subject.isPrimitive();
+			
+			if (referenceType){
+				if (this.baseObject == null) {
+					throw new IllegalStateException("The baseObject must be defined for " +
+							"non-primitive field:" + field.getName());
+				}
+				if (!field.getType().isAssignableFrom(baseObject.getClass())) {
+					throw new IllegalStateException("The baseObject is not assignable " +
+							"to field: " + field.getName());
+				}
+				if (unequalObject != null 
+						&& !field.getType().isAssignableFrom(unequalObject.getClass())){
+					throw new IllegalStateException("The unequalObject is not assignable " +
+							"to field: " + field.getName());
+				}
+			}
+		}
+	}
+	
+	class EffectiveFieldPopulator extends IneffectiveFieldPopulator {
+		
+		private Object equalObject;
+		
+		EffectiveFieldPopulator(final Field field,
+				final Object baseObject, 
+				final Object equalObject,
+				final Object unequalObject) {
+			super(field, baseObject, unequalObject);
+			setBaseObject(baseObject);
+			setUnequalObject(unequalObject);
+			this.equalObject = equalObject;
+			this.validatePopulationObjects();
+		}
+		
+		EffectiveFieldPopulator(final Field field) {
+			super(field);
+			this.validatePopulationObjects();
+		}
+
+		EffectiveFieldPopulator() {
+		}
+
+		Object getEqualObject() {
+			return equalObject;
+		}
+
+		void setEqualObject(Object equalObject) {
+			this.equalObject = equalObject;
+		}
+
+		@Override
+		void validatePopulationObjects() {
+			super.validatePopulationObjects();
+			if (referenceType) { 
+				if (equalObject == null) {
+					throw new IllegalStateException("The equalObject must be defined " +
+							"for non-primitive field: " + field.getName());					
+				}
+				if (!field.getType().isAssignableFrom(equalObject.getClass())){
+					throw new IllegalStateException("The equalObject is not assignable " +
+							"to field: " + field.getName());
+				}
+			}
+			
+		}
+	}
 }
