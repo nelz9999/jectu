@@ -89,7 +89,7 @@ public class FieldPopulatorTest {
 		effective.setBaseObject(new Jectu());
 		effective.setUnequalObject(new Jectu());
 		try {
-			effective.validatePopulationObjects();
+			effective.validateMorePopulationObjects();
 			fail("Expected Exception");			
 		} catch (IllegalStateException ex) {
 			assertTrue(ex.getMessage().indexOf("defined") != -1);
@@ -98,7 +98,7 @@ public class FieldPopulatorTest {
 
 		effective.setEqualObject(new StringBuffer());
 		try {
-			effective.validatePopulationObjects();
+			effective.validateMorePopulationObjects();
 			fail("Expected Exception");			
 		} catch (IllegalStateException ex) {
 			assertTrue(ex.getMessage().indexOf("assignable") != -1);

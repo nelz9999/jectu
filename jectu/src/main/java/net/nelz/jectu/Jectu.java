@@ -149,10 +149,14 @@ public final class Jectu {
 		
 		this.processFields();
 		
-//		for (Field field : effectiveFields) {
-//			this.testEffectiveField(field);
-//		}
-		
+		for (final IneffectiveFieldPopulator populator : ineffectiveFieldNames.values()) {
+			this.verifyFieldIneffective(populator);
+		}
+	
+		for (final EffectiveFieldPopulator populator : effectiveFieldNames.values()) {
+			this.verfiyFieldEffective(populator);
+		}
+
 		postProcess();
 	}
 	
@@ -361,31 +365,53 @@ public final class Jectu {
 		}
 	}
 	
-	void testEffectiveField(final Field field) {
-		if (field == null) {
-			throw new InvalidParameterException("Field must be defined.");
+	void verifyFieldIneffective(final IneffectiveFieldPopulator populator) {
+		if (populator == null || populator.getField() == null) {
+			throw new InvalidParameterException("Populator and field must be defined.");
 		}
-		final StringBuffer base = new StringBuffer("Field \"" + field.getName() + "\"");
-		final StringBuffer error1 = new StringBuffer(base);
-		error1.append(" does not contribute to inequality as expected");
-		final StringBuffer error2 = new StringBuffer(base);
-		error2.append(" does not contribute to equality as expected");
 		
-		this.setFieldsUnequal(field);
+		final Field field = populator.getField();
+		final StringBuffer base = new StringBuffer("Field \"" + field.getName() + "\" ");
+		final StringBuffer error1 = new StringBuffer(base);
+		error1.append("unexpectedly appears to contribute to equality");
+
+		this.setFieldsUnequal(populator);
+		this.testEquality(error1.toString());
+	}
+	
+	void verfiyFieldEffective(final EffectiveFieldPopulator populator) {
+//	void testEffectiveField(final Field field) {
+		if (populator == null || populator.getField() == null) {
+			throw new InvalidParameterException("Populator and field must be defined.");
+		}
+	
+		final Field field = populator.getField();
+		final StringBuffer base = new StringBuffer("Field \"" + field.getName() + "\" ");
+		final StringBuffer error1 = new StringBuffer(base);
+		error1.append("does not contribute to inequality as expected");
+		final StringBuffer error2 = new StringBuffer(base);
+		error2.append("does not contribute to equality as expected");
+		
+		this.setFieldsUnequal(populator);
 		this.testInequality(error1.toString());
 		
-		this.setFieldsEqual(field);
+		this.setFieldsEqual(populator);
 		this.testEquality(error2.toString());
 	}
 	
 	@SuppressWarnings("unchecked")
-	void setFieldsUnequal(final Field field) {
-		if (field == null) {
-			throw new InvalidParameterException("Field must be defined.");
+	void setFieldsUnequal(final IneffectiveFieldPopulator populator) {
+		if (populator == null || populator.getField() == null) {
+			throw new InvalidParameterException("Populator and field must be defined.");
 		}
+		final Field field = populator.getField();
 		try {
 			final String typeName = field.getType().getName();
-			if (typeName.equals(Boolean.TYPE.getName())) {
+			if (populator.isReferenceType()) {
+				field.set(exampleX, populator.getBaseObject());
+				field.set(exampleY, populator.getUnequalObject());
+				field.set(exampleZ, populator.getUnequalObject());
+			} else if (typeName.equals(Boolean.TYPE.getName())) {
 				boolean [] vals = PrimitiveValueGenerator.generateBooleanValues();
 				field.setBoolean(exampleX, vals[0]);
 				field.setBoolean(exampleY, vals[1]);
@@ -435,13 +461,18 @@ public final class Jectu {
 	}
 	
 	@SuppressWarnings("unchecked")
-	void setFieldsEqual(final Field field) {
-		if (field == null) {
-			throw new InvalidParameterException("Field must be defined.");
+	void setFieldsEqual(final EffectiveFieldPopulator populator) {
+		if (populator == null || populator.getField() == null) {
+			throw new InvalidParameterException("Populator and field must be defined.");
 		}
+		final Field field = populator.getField();
 		try {
 			final String typeName = field.getType().getName();
-			if (typeName.equals(Boolean.TYPE.getName())) {
+			if (populator.isReferenceType()) {
+				field.set(exampleX, populator.getBaseObject());
+				field.set(exampleY, populator.getEqualObject());
+				field.set(exampleZ, populator.getEqualObject());
+			} else if (typeName.equals(Boolean.TYPE.getName())) {
 				boolean [] vals = PrimitiveValueGenerator.generateBooleanValues();
 				field.setBoolean(exampleX, vals[0]);
 				field.setBoolean(exampleY, vals[0]);
@@ -896,18 +927,16 @@ public final class Jectu {
 		
 		EffectiveFieldPopulator(final Field field,
 				final Object baseObject, 
-				final Object equalObject,
-				final Object unequalObject) {
+				final Object unequalObject,
+				final Object equalObject) {
 			super(field, baseObject, unequalObject);
-			setBaseObject(baseObject);
-			setUnequalObject(unequalObject);
 			this.equalObject = equalObject;
-			this.validatePopulationObjects();
+			this.validateMorePopulationObjects();
 		}
 		
 		EffectiveFieldPopulator(final Field field) {
 			super(field);
-			this.validatePopulationObjects();
+			this.validateMorePopulationObjects();
 		}
 
 		EffectiveFieldPopulator() {
@@ -921,8 +950,7 @@ public final class Jectu {
 			this.equalObject = equalObject;
 		}
 
-		@Override
-		void validatePopulationObjects() {
+		void validateMorePopulationObjects() {
 			super.validatePopulationObjects();
 			if (referenceType) { 
 				if (equalObject == null) {
