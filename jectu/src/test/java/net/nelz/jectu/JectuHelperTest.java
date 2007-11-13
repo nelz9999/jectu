@@ -339,17 +339,17 @@ public class JectuHelperTest {
 //			assertTrue(ex.getMessage().indexOf(n3) != -1);
 //		}
 //	}
-	
-	@Test
-	public void shouldDisallowMultipleChangesToAllowIgnored() {
-		jectu.setAllowIgnoredFields(false);
-		try {
-			jectu.setAllowIgnoredFields(true);
-			fail("Expected Exception.");
-		} catch (IllegalStateException ex) {
-			assertTrue(true);
-		}
-	}
+//	
+//	@Test
+//	public void shouldDisallowMultipleChangesToAllowIgnored() {
+//		jectu.setAllowIgnoredFields(false);
+//		try {
+//			jectu.setAllowIgnoredFields(true);
+//			fail("Expected Exception.");
+//		} catch (IllegalStateException ex) {
+//			assertTrue(true);
+//		}
+//	}
 //	
 //	@Test
 //	public void shouldDisallowChangesToAllowIgnoredFalseIfAlreadyIgnored() {
@@ -389,12 +389,12 @@ public class JectuHelperTest {
 //			assertTrue(ex.getMessage().indexOf("ignored") != -1);
 //		}
 //	}
-	
-	@Test
-	public void shouldPostProcessAndSucceed() {
-		jectu.setAllowIgnoredFields(false);
-		jectu.postProcess();	
-	}
+//	
+//	@Test
+//	public void shouldPostProcessAndSucceed() {
+//		jectu.setAllowIgnoredFields(false);
+//		jectu.postProcess();	
+//	}
 	
 	@Test
 	public void shouldCheckEffective() {
@@ -544,6 +544,19 @@ public class JectuHelperTest {
 		
 		// This ensures that multiple submissions don't cause errors.
 		jectu.addIgnoredField(fieldName);		
-
 	}
+
+	@Test
+	public void shouldCheckFrozen() {
+		final String fieldName = RandomStringUtils.randomAlphabetic(20);
+		jectu.getAllFields().put(fieldName, null);
+		jectu.freezeIgnoredFields();
+
+		try {
+			jectu.addIgnoredField(fieldName);
+		} catch (IllegalStateException ex) {
+			assertTrue(ex.getMessage().indexOf("frozen") != -1);
+		}		
+	}
+	
 }
