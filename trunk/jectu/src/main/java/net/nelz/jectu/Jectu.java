@@ -79,8 +79,9 @@ public final class Jectu {
 	private boolean effectiveByDefault = true;
 	private boolean defaultEffectivenessSet = false;
 	
-	private boolean allowIgnoredFields = true;
-	private boolean allowIgnoredFieldsSet = false;
+	private boolean ignoredFieldsFrozen = false;
+//	private boolean allowIgnoredFields = true;
+//	private boolean allowIgnoredFieldsSet = false;
 	
 	private StackTraceElement[] stackTrace;
 	
@@ -157,7 +158,6 @@ public final class Jectu {
 			this.verfiyFieldEffective(populator);
 		}
 
-		postProcess();
 	}
 	
 	/**
@@ -260,6 +260,13 @@ public final class Jectu {
 		return this.addIneffectiveField(fieldName, null, null);
 	}
 	
+	/**
+	 * Add to the list of ignored fields.  (Ignored fields are neither checked for effectiveness
+	 * nor ineffectiveness.  These fields usually have specific characteristics: static, or 
+	 * transient, or of array type, etc...)
+	 * @param fieldName
+	 * @return
+	 */
 	public Jectu addIgnoredField(final String fieldName) {
 		/*
 		 * We don't need to check for duplicate submissions, as it doesn't create multiple
@@ -268,6 +275,12 @@ public final class Jectu {
 		if (!allFields.containsKey(fieldName)) {
 			throw new IllegalStateException("Cannot find a field named: " + fieldName);
 		}
+
+		if (ignoredFieldsFrozen) {
+    		throw new IllegalStateException("Field '" + fieldName + "' was " +
+    				"about to be ignored, even though the ignored field list" +
+    				"has been frozen.");
+    	}
 				
 		if (effectiveFieldNames.containsKey(fieldName)) {
 			throw new IllegalStateException("There is already an effective entry for field: "
@@ -287,6 +300,12 @@ public final class Jectu {
 		return effectiveByDefault;
 	}
 
+	/**
+	 * Set the default behavior for un-specified (primitive) fields, whether they should be
+	 * considered as effective or ineffective.
+	 * @param effectiveByDefault
+	 * @return
+	 */
 	public Jectu setEffectiveByDefault(boolean effectiveByDefault) {
 		if (this.defaultEffectivenessSet) {
 			throw new IllegalStateException("EffectiveByDefault already set.");
@@ -296,26 +315,14 @@ public final class Jectu {
 		return this;
 	}
 	
-	boolean isAllowIgnoredFields() {
-		return allowIgnoredFields;
-	}
-
-	public Jectu setAllowIgnoredFields(final boolean allowIgnoredFields) {
-		/*
-		 * TODO: This is a candidate for refactoring.  Instead of "allow" or 
-		 * "disallow" ignored fields, use more of a "freeze" policy.
-		 */
-		if (this.allowIgnoredFieldsSet) {
-			throw new IllegalStateException("AllowIgnoredFields has already been set.");
-		}
-		
-		if (!allowIgnoredFields && (this.ignoredFieldNames.size() > 0)) {
-			throw new IllegalStateException("There have already been ignored fields added.");
-		}
-		
-		this.allowIgnoredFields = allowIgnoredFields;
-		this.allowIgnoredFieldsSet = true;
-		
+	/**
+	 * Invoke this method if you are declaratively defining the fields that will be ignored, and
+	 * you have finished declaring which fields will be ignored.  Any further attempts by the 
+	 * user, or by the utility to add a field to the ignored list will throw an exception.
+	 * @return
+	 */
+	public Jectu freezeIgnoredFields() {
+		this.ignoredFieldsFrozen = true;
 		return this;
 	}
 
@@ -351,6 +358,11 @@ public final class Jectu {
 		        		|| Modifier.isTransient(field.getModifiers())
 		        		|| field.getType().isArray()
 		        		|| !field.getType().isPrimitive()) {
+		        	if (ignoredFieldsFrozen) {
+		        		throw new IllegalStateException("Field '" + fieldName + "' was " +
+		        				"about to be ignored, even though the ignored field list" +
+		        				"has been frozen.");
+		        	}
 		        	ignoredFieldNames.put(fieldName, field);
 		        } else if (effectiveByDefault) {
 		        	// If we've defaulted to effective, set an un-assigned field to effective.
@@ -534,20 +546,7 @@ public final class Jectu {
 			allFields.put(field.getName(), field);
 		}
 	}
-	
-	/**
-	 * Do all the clean-up type of check after equality has been tested.
-	 */
-	void postProcess() {
-//		if (!this.allowIgnoredFields && ignoredFields.size() > 0) {
-//			StringBuffer buffer = new StringBuffer("The following fields were ignored:\n");
-//			for (Field field : ignoredFields) {
-//				buffer.append(field.getName() + "\n");
-//			}
-//			AssertJectu.assertTrue(stackTrace, buffer.toString(), false);
-//		}
-	}
-	
+		
 	void testEquality(final String message) {
 		this.testNullSensitive(message);
 		this.testReflexive(message);

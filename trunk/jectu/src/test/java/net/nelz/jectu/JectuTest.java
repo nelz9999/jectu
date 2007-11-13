@@ -15,58 +15,11 @@ public class JectuTest {
 	public void shouldPassPrimitivePOJO() {
 		new Jectu(PrimitivePOJO.class).execute();
 	}
-//	
-//	@Test
-//	public void shouldFailPrimitiveIneffectiveDoublePOJO() {
-//		try {
-//			new Jectu(PrimitiveIneffectiveDoublePOJO.class).execute();
-//			fail("Expected Exception.");
-//		} catch (AssertionError ex) {
-//			assertTrue(ex.getMessage().indexOf("testDouble") != -1);
-//		}
-//	}
-//	
-//	@Test
-//	public void shouldFailPrimitiveIneffectiveBytePOJO() {
-//		try {
-//			new Jectu(PrimitiveIneffectiveBytePOJO.class).execute();
-//			fail("Expected Exception.");
-//		} catch (AssertionError ex) {
-//			assertTrue(ex.getMessage(), ex.getMessage().indexOf("testByte") != -1);
-//		}
-//	}
-//	
-//	@Test
-//	public void shouldSucceedPrimitivePurposefulIneffectiveBytePOJO() {
-//		new Jectu(PrimitiveIneffectiveBytePOJO.class)
-//				.addIneffectiveFieldName("testByte")
-//				.execute();
-//		new Jectu(PrimitiveIneffectiveDoublePOJO.class)
-//				.addIneffectiveFieldName("testDouble")
-//				.execute();
-//	}
 	
 	@Test
 	public void shouldIgnoreObjectAndTest() {
 		new Jectu(PrimitivePlusObjectPOJO.class)
 			.execute();
-	}
-//	No Longer Valid, as we can work with Arrays and Objects.
-//	@Test
-//	public void shouldIgnoreArray() {
-//		new Jectu(PrimitivePlusPrimitiveArrayPOJO.class)
-//			.execute();
-//	}
-	
-	@Test
-	public void shouldFailDisallowedIgnored() {
-		try {
-			new Jectu(PrimitivePlusObjectPOJO.class)
-				.setAllowIgnoredFields(false)
-				.execute();
-		} catch (AssertionError ex) {
-			assertTrue(ex.getMessage().indexOf("ignore") != -1);
-		}
 	}
 	
 	@Test
@@ -104,6 +57,71 @@ public class JectuTest {
 			.addIneffectiveField("xShort")
 			.addIneffectiveField("xDate", date1, date3)
 			.addIneffectiveField("xString", "bubba", "gump")
+			.execute();
+	}
+
+	
+	@Test
+	public void shouldSucceedObjectsAndPrimitivesGenerated() {
+		final Date date1 = new Date();
+		final Date date2 = (Date) date1.clone();
+		final Date date3 = new Date(date1.getTime() - 1000000);
+
+		new Jectu(ObjectsAndPrimitivesGenerated.class)
+			.setEffectiveByDefault(true)
+			.addEffectiveField("testDate", date1, date3, date2)
+			.addIneffectiveField("xBoolean")
+			.addIneffectiveField("xByte")
+			.addIneffectiveField("xChar")
+			.addIneffectiveField("xDouble")
+			.addIneffectiveField("xFloat")
+			.addIneffectiveField("xInt")
+			.addIneffectiveField("xLong")
+			.addIneffectiveField("xShort")
+			.addIneffectiveField("xDate", date1, date3)
+			.addIneffectiveField("xString", "bubba", "gump")
+			.execute();
+	}
+	
+	@Test
+	public void shouldFailFrozenIgnoredList() {
+		final Date date1 = new Date();
+		final Date date2 = (Date) date1.clone();
+		final Date date3 = new Date(date1.getTime() - 1000000);
+
+		final Jectu jectu = new Jectu(ObjectsAndPrimitivesAndIgnoredFields.class)
+			.setEffectiveByDefault(true)
+			.addEffectiveField("testDouble")
+			.addEffectiveField("testDate", date1, date3, date2)
+			.addIneffectiveField("xInt")
+			.addIneffectiveField("xString", "shallow", "hal")
+			.addIgnoredField("STATIC1")
+			.freezeIgnoredFields();
+		
+		try {
+			jectu.execute();
+			fail("Expected Exception");
+		} catch (IllegalStateException ex) {
+			assertTrue(ex.getMessage().indexOf("frozen") != -1);
+		}
+	}
+
+	
+	@Test
+	public void shouldSucceedFrozenIgnoredList() {
+		final Date date1 = new Date();
+		final Date date2 = (Date) date1.clone();
+		final Date date3 = new Date(date1.getTime() - 1000000);
+
+		new Jectu(ObjectsAndPrimitivesAndIgnoredFields.class)
+			.setEffectiveByDefault(true)
+			.addEffectiveField("testDouble")
+			.addEffectiveField("testDate", date1, date3, date2)
+			.addIneffectiveField("xInt")
+			.addIneffectiveField("xString", "shallow", "hal")
+			.addIgnoredField("STATIC1")
+			.addIgnoredField("STATIC2")
+			.freezeIgnoredFields()
 			.execute();
 	}
 
