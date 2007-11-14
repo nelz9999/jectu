@@ -47,7 +47,7 @@ public class MultiArgumentConstructorObject {
 
 This is how you would use Jectu to test it:
 {{{
-	public void shouldSucceedFrozenIgnoredList() {
+	public void testSucceed() {
 		final Date date1 = new Date();
 		final Date date2 = (Date) date1.clone();
 		final Date date3 = new Date(date1.getTime() - 1000000);
