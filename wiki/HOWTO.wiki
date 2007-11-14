@@ -2,7 +2,7 @@
 
 = How To =
 
-Given this class:
+Given this, as the class-under-test:
 {{{
 public class MultiArgumentConstructorObject {
 	private double testDouble;
