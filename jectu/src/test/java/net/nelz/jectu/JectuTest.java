@@ -125,4 +125,52 @@ public class JectuTest {
 			.execute();
 	}
 
+	@Test
+	public void shouldThrowExceptionForNonNullConstructor() {
+		try {
+			new Jectu(MultiArgumentConstructorObject.class);
+			fail("Expected Exception");
+		} catch (RuntimeException ex) {
+			assertTrue(ex.getMessage().indexOf("instantiate") != -1);
+		}
+	}
+	
+	@Test
+	public void shouldHandleNonNullConstructor() {
+		final Date date1 = new Date();
+		final Date date2 = (Date) date1.clone();
+		final Date date3 = new Date(date1.getTime() - 1000000);
+
+		final MultiArgumentConstructorObject o1 = new MultiArgumentConstructorObject(date1, 4);
+		final MultiArgumentConstructorObject o2 = new MultiArgumentConstructorObject(date1, 4);
+		final MultiArgumentConstructorObject o3 = new MultiArgumentConstructorObject(date1, 4);
+		
+		new Jectu(o1, o2, o3)
+			.setEffectiveByDefault(true)
+			.addEffectiveField("testDouble")
+			.addEffectiveField("testDate", date1, date3, date2)
+			.addIneffectiveField("xInt")
+			.addIneffectiveField("xString", "shallow", "hal")
+			.addIgnoredField("STATIC1")
+			.addIgnoredField("STATIC2")
+			.freezeIgnoredFields()
+			.execute();
+	}
+	
+	@Test
+	public void shouldThrowExceptionForDisparateTypes() {
+		try {
+			new Jectu(new String(), new String(), new Date());
+			fail("Expected Exception");
+		} catch (IllegalStateException ex) {
+			assertTrue(ex.getMessage().indexOf("same type") != -1);
+		}
+
+		try {
+			new Jectu(new String(), new Date(), new String());
+			fail("Expected Exception");
+		} catch (IllegalStateException ex) {
+			assertTrue(ex.getMessage().indexOf("same type") != -1);
+		}
+	}
 }
