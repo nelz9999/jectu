@@ -12,5 +12,5 @@ Planned improvements:
   # Site documentation
   # Optional failure for bad hashCode implementation
   # Transient fields
-  # Add a test against null object (sometimes the unequalObject should be null)
+  # Add a test against null object (sometimes the unequalObject should be null, maybe the exampleX object should automatically be null?  Or make multiple unequalObjects programmable, so they can test non-equal classes as well?)
   # mvn assembly for source as well?
