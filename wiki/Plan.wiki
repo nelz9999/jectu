@@ -7,8 +7,10 @@ Planned improvements:
   # ~~Remove any dependency on TestNG or JUnit, just throw AssertionError~~ - Done in 0.1.0
   # Superclasses - Use reflection to move up the class heirarchy
   # Primitive arrays
-  # Objects (Programmable?)
+  # ~~Objects (Programmable?)~~ - Done in 0.2.0
   # Reporting 
   # Site documentation
   # Optional failure for bad hashCode implementation
   # Transient fields
+  # Add a test against null object (sometimes the unequalObject should be null)
+  # mvn assembly for source as well?
