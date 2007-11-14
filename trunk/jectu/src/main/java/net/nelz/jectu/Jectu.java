@@ -111,7 +111,27 @@ public final class Jectu {
 	 */
 	@SuppressWarnings("unchecked")
 	public Jectu(final Class clazz) {
-		classUnderTest = clazz;
+		classUnderTest = clazz;		
+		this.createObjectsFromClass(classUnderTest);
+		preProcess();
+	}
+	
+	/**
+	 * Create an instance of Jectu to test against the provided classes.  Each of the supplied 
+	 * classes must be of the same type, and they must start out equal.
+	 * @param objectX
+	 * @param objectY
+	 * @param objectZ
+	 */
+	public Jectu(final Object objectX, final Object objectY, final Object objectZ) {
+		classUnderTest = objectX.getClass();
+		if (!classUnderTest.equals(objectY.getClass()) ||
+				!classUnderTest.equals(objectZ.getClass())) {
+			throw new IllegalStateException("All objects must be of the same type.");
+		}
+		exampleX = objectX;
+		exampleY = objectY;
+		exampleZ = objectZ;
 		preProcess();
 	}
 	
@@ -141,8 +161,6 @@ public final class Jectu {
 	@SuppressWarnings("unchecked")
 	public void execute() {
 		this.performStackTraceMagic(new AssertionError());
-		
-		this.createObjectsFromClass(classUnderTest);
 		
 		// TODO: Make this a conditional assumption?
 		final String start = "Fresh instances of this class are not equal.";
