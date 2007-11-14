@@ -1,0 +1,8 @@
+X) Remove any dependency on TestNG or JUnit (Just throw AssertionError)
+2) Superclasses
+3) Primitive arrays
+4) Objects (Programmable?)
+5) Reporting
+6) Site documentation
+7) Release v.0.1.0
+8) Optional failure for bad hashCode implementation
