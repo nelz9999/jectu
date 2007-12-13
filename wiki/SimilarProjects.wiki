@@ -2,3 +2,4 @@
 
 = Projects with similar aims as JECTU =
   * [http://junit-addons.sourceforge.net/ JUnit-Addons] - A Pre-JUnit4 base class, called `EqualsHashCodeTestCase`
+  * [http://www.unitils.org/ Unitils] - A newly released 1.0 project that focuses on testing persistent objects, including a reflection-based equals tester.  (I'll be looking into this project for possible synergies...)
