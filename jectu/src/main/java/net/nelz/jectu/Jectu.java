@@ -1,10 +1,10 @@
 package net.nelz.jectu;
 
+import org.apache.commons.lang.math.*;
+
 import java.lang.reflect.*;
 import java.security.*;
 import java.util.*;
-
-import org.apache.commons.lang.math.*;
 
 /**
  * <i><b>JECTU</b> - The <b>J</b>ava <b>E</b>quals <b>C</b>ontract <b>T</b>esting <b>U</b>tuility</i>
@@ -368,14 +368,14 @@ public final class Jectu {
 					&& !ineffectiveFieldNames.containsKey(fieldName)
 					&& !ignoredFieldNames.containsKey(fieldName)) {
 				final Field field = allFields.get(fieldName);
-				
+
 				// This is where we discriminate about what types of 
 				// fields we can handle.
 		        if ((fieldName.indexOf('$') != -1)
 		        		|| Modifier.isStatic(field.getModifiers())
 		        		|| Modifier.isTransient(field.getModifiers())
 		        		|| field.getType().isArray()
-		        		|| !field.getType().isPrimitive()) {
+		        		|| (!field.getType().isPrimitive() && !field.getType().isEnum())) {
 		        	if (ignoredFieldsFrozen) {
 		        		throw new IllegalStateException("Field '" + fieldName + "' was " +
 		        				"about to be ignored, even though the ignored field list" +
@@ -410,7 +410,6 @@ public final class Jectu {
 	}
 	
 	void verfiyFieldEffective(final EffectiveFieldPopulator populator) {
-//	void testEffectiveField(final Field field) {
 		if (populator == null || populator.getField() == null) {
 			throw new InvalidParameterException("Populator and field must be defined.");
 		}
@@ -438,6 +437,17 @@ public final class Jectu {
 		try {
 			final String typeName = field.getType().getName();
 			if (populator.isReferenceType()) {
+				field.set(exampleX, populator.getBaseObject());
+				field.set(exampleY, populator.getUnequalObject());
+				field.set(exampleZ, populator.getUnequalObject());
+			} else if (populator.isEnumType() && populator.getBaseObject() == null) {
+				// Enum, without values provided.
+				Object[] enumValues = field.getType().getEnumConstants();
+				field.set(exampleX, enumValues[0]);
+				field.set(exampleY, (enumValues.length > 1 ? enumValues[1] : null));
+				field.set(exampleZ, (enumValues.length > 1 ? enumValues[1] : null)); //TODO: Necessary?  Different value than Y?
+			} else if (populator.isEnumType() && populator.getBaseObject() != null) {
+				// Enum, with values provided.
 				field.set(exampleX, populator.getBaseObject());
 				field.set(exampleY, populator.getUnequalObject());
 				field.set(exampleZ, populator.getUnequalObject());
@@ -499,6 +509,17 @@ public final class Jectu {
 		try {
 			final String typeName = field.getType().getName();
 			if (populator.isReferenceType()) {
+				field.set(exampleX, populator.getBaseObject());
+				field.set(exampleY, populator.getEqualObject());
+				field.set(exampleZ, populator.getEqualObject());
+			} else if (populator.isEnumType() && populator.getBaseObject() == null) {
+				// Enum, without values provided.
+				Object[] enumValues = field.getType().getEnumConstants();
+				field.set(exampleX, enumValues[0]);
+				field.set(exampleY, enumValues[0]);
+				field.set(exampleZ, enumValues[0]);
+			} else if (populator.isEnumType() && populator.getBaseObject() != null) {
+				// Enum, with values provided.
 				field.set(exampleX, populator.getBaseObject());
 				field.set(exampleY, populator.getEqualObject());
 				field.set(exampleZ, populator.getEqualObject());
@@ -864,6 +885,7 @@ public final class Jectu {
 		Object baseObject;
 		Object unequalObject;
 		boolean referenceType = false;
+		boolean enumType = false;
 		
 		IneffectiveFieldPopulator(final Field field, 
 				final Object baseObject,
@@ -910,7 +932,15 @@ public final class Jectu {
 		boolean isReferenceType() {
 			return referenceType;
 		}
-		
+
+		public boolean isEnumType() {
+			return enumType;
+		}
+
+		public void setEnumType(boolean enumType) {
+			this.enumType = enumType;
+		}
+
 		@SuppressWarnings("unchecked")
 		void validatePopulationObjects() {
 			if (field == null) {
@@ -918,7 +948,8 @@ public final class Jectu {
 			}
 			
 			Class subject = field.getType();
-			referenceType = !subject.isPrimitive();
+			referenceType = !subject.isPrimitive() && !subject.isEnum();
+			enumType = subject.isEnum();
 			
 			if (referenceType){
 				if (this.baseObject == null) {
@@ -933,6 +964,14 @@ public final class Jectu {
 						&& !field.getType().isAssignableFrom(unequalObject.getClass())){
 					throw new IllegalStateException("The unequalObject is not assignable " +
 							"to field: " + field.getName());
+				}
+			}
+
+			if (enumType) {
+				final Object [] enumTypes = subject.getEnumConstants();
+				if (enumTypes.length < 1) {
+					throw new IllegalStateException("There are no Enum constants defined " +
+							"for field: " + field.getName());
 				}
 			}
 		}
