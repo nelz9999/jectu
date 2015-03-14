@@ -1,0 +1,60 @@
+# How To #
+
+Given this, as the class-under-test:
+```
+public class MultiArgumentConstructorObject {
+	private double testDouble;
+	private Date testDate;
+	private int xInt;
+	private String xString;
+	private static final String STATIC1 = "bubba";
+	private static final String STATIC2 = "gump";
+	
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result
+				+ ((testDate == null) ? 0 : testDate.hashCode());
+		long temp;
+		temp = Double.doubleToLongBits(testDouble);
+		result = prime * result + (int) (temp ^ (temp >>> 32));
+		return result;
+	}
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		final MultiArgumentConstructorObject other = (MultiArgumentConstructorObject) obj;
+		if (testDate == null) {
+			if (other.testDate != null)
+				return false;
+		} else if (!testDate.equals(other.testDate))
+			return false;
+		if (Double.doubleToLongBits(testDouble) != Double
+				.doubleToLongBits(other.testDouble))
+			return false;
+		return true;
+	}
+}
+```
+
+This is how you would use Jectu to test it:
+```
+	public void testSucceed() {
+		final Date date1 = new Date();
+		final Date date2 = (Date) date1.clone();
+		final Date date3 = new Date(date1.getTime() - 1000000);
+
+		new Jectu(MultiArgumentConstructorObject.class)
+			.addEffectiveField("testDate", date1, date3, date2)
+			.addIneffectiveField("xInt")
+			.addIneffectiveField("xString", "shallow", "hal")
+			.execute();
+	}
+
+```
